@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -62,7 +62,10 @@ export default function BatchSummaryPage() {
   }, [batchId]);
 
   const sum = (field: keyof Order) =>
-    orders.reduce((acc, o) => acc + (o[field] || 0), 0).toFixed(2);
+    orders.reduce((acc, o) => {
+      const value = o[field];
+      return acc + (typeof value === 'number' ? value : 0);
+    }, 0).toFixed(2);
 
   const count = (field: keyof Order) =>
     orders.filter((o) => !!o[field]).length;
