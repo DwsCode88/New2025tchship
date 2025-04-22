@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/firebase';
+import { generateTCGCSV } from '@/lib/generateTCGCSV';
 import { v4 as uuidv4 } from 'uuid';
 
 type ParsedRow = {
@@ -77,7 +78,11 @@ export default function UploadPage() {
     setLabels([]);
   };
 
-  const updateOrder = (index: number, field: keyof ParsedRow, value: any) => {
+  const updateOrder = <K extends keyof ParsedRow>(
+    index: number,
+    field: K,
+    value: ParsedRow[K]
+  ) => {
     const updated = [...orders];
     updated[index][field] = value;
     setOrders(updated);
