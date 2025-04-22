@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -9,9 +9,11 @@ import {
   query,
   where,
   getDocs,
+  updateDoc,
 } from 'firebase/firestore';
 import { db } from '@/firebase';
 import Link from 'next/link';
+import { debounce } from 'lodash';
 
 type Order = {
   orderNumber: string;
@@ -23,6 +25,7 @@ type Order = {
   shieldCost: number;
   totalCost: number;
   shippingShield: boolean;
+  notes?: string;
 };
 
 export default function BatchSummaryPage() {
@@ -63,6 +66,11 @@ export default function BatchSummaryPage() {
 
   const count = (field: keyof Order) =>
     orders.filter((o) => !!o[field]).length;
+
+  const debouncedSave = debounce(async (text: string) => {
+    const batchRef = doc(db, 'batches', batchId);
+    await updateDoc(batchRef, { notes: text });
+  }, 1000);
 
   const handleDownloadCSV = () => {
     const csv = [
@@ -121,11 +129,24 @@ export default function BatchSummaryPage() {
         </Link>
       </div>
 
-      {batchNotes && (
-        <div className="mb-4 text-sm text-gray-700 bg-yellow-50 border border-yellow-300 p-3 rounded">
-          <p className="italic">📝 {batchNotes}</p>
-        </div>
-      )}
+      <div className="mb-6">
+        <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+          📝 Batch Notes
+        </label>
+        <textarea
+          id="notes"
+          rows={3}
+          value={batchNotes}
+          onChange={(e) => {
+            const val = e.target.value;
+            setBatchNotes(val);
+            debouncedSave(val);
+          }}
+          className="mt-1 w-full border p-2 rounded text-sm"
+          placeholder="Add notes about this batch (auto-saved)"
+        />
+        <p className="text-xs text-gray-500 mt-1">🧠 Notes auto-save while typing...</p>
+      </div>
 
       {loading ? (
         <p className="text-center text-gray-500">Loading...</p>
@@ -160,6 +181,7 @@ export default function BatchSummaryPage() {
                   <th className="p-3 text-left">✉️ Envelope</th>
                   <th className="p-3 text-left">🛡 Shield</th>
                   <th className="p-3 text-left">🧾 Total</th>
+                  <th className="p-3 text-left">📝 Notes</th>
                   <th className="p-3 text-left">Label</th>
                 </tr>
               </thead>
@@ -174,6 +196,7 @@ export default function BatchSummaryPage() {
                     <td className="p-3">${o.envelopeCost?.toFixed(2)}</td>
                     <td className="p-3">${o.shieldCost?.toFixed(2)}</td>
                     <td className="p-3 font-semibold">${o.totalCost?.toFixed(2)}</td>
+                    <td className="p-3 text-xs text-gray-600">{o.notes || ''}</td>
                     <td className="p-3">
                       <a
                         href={o.labelUrl}
@@ -189,13 +212,12 @@ export default function BatchSummaryPage() {
               </tbody>
               <tfoot>
                 <tr className="bg-gray-50 font-semibold">
-                  <td colSpan={3} className="p-3">Totals</td>
-                  <td className="p-3 text-center">{count('shippingShield')}</td>
+                  <td colSpan={4} className="p-3">Totals</td>
                   <td className="p-3">${sum('labelCost')}</td>
                   <td className="p-3">${sum('envelopeCost')}</td>
                   <td className="p-3">${sum('shieldCost')}</td>
                   <td className="p-3">${sum('totalCost')}</td>
-                  <td />
+                  <td colSpan={2} />
                 </tr>
               </tfoot>
             </table>
