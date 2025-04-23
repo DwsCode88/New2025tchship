@@ -101,6 +101,11 @@ export default function UploadPage() {
   };
 
   const generateLabels = async () => {
+    if (loading) {
+      alert('Please wait — label generation is already in progress.');
+      return;
+    }
+
     if (!user) return;
     setLoading(true);
 
@@ -158,6 +163,12 @@ export default function UploadPage() {
                   <th className="border px-2 py-1">#</th>
                   <th className="border px-2 py-1">Order #</th>
                   <th className="border px-2 py-1">Name</th>
+                  <th className="border px-2 py-1">Address 1</th>
+                  <th className="border px-2 py-1">Address 2</th>
+                  <th className="border px-2 py-1">City</th>
+                  <th className="border px-2 py-1">State</th>
+                  <th className="border px-2 py-1">Zip</th>
+                  <th className="border px-2 py-1">Weight</th>
                   <th className="border px-2 py-1">📨</th>
                   <th className="border px-2 py-1">🛡</th>
                   <th className="border px-2 py-1">📝 Notes</th>
@@ -169,6 +180,12 @@ export default function UploadPage() {
                     <td className="border px-2 py-1">{i + 1}</td>
                     <td className="border px-2 py-1">{o.orderNumber}</td>
                     <td className="border px-2 py-1">{o.name}</td>
+                    <td className="border px-2 py-1">{o.address1}</td>
+                    <td className="border px-2 py-1">{o.address2}</td>
+                    <td className="border px-2 py-1">{o.city}</td>
+                    <td className="border px-2 py-1">{o.state}</td>
+                    <td className="border px-2 py-1">{o.zip}</td>
+                    <td className="border px-2 py-1">{o.weight}</td>
                     <td className="border px-2 py-1 text-center">
                       <input
                         type="checkbox"
@@ -205,6 +222,7 @@ export default function UploadPage() {
               >
                 {loading ? 'Generating...' : 'Generate Labels'}
               </button>
+              {loading && <p className="text-sm text-gray-600 mt-2">Generating labels... please wait.</p>}
             </div>
           </>
         )}
