@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import { useRouter } from 'next/navigation';
 import { auth } from '@/firebase';
-import { generateTCGCSV } from '@/lib/generateTCGCSV';
+import { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { generateTCGCSV } from '@/lib/generateTCGCSV';
 
 type ParsedRow = {
   name: string;
@@ -30,9 +31,16 @@ type LabelResult = {
 
 export default function UploadPage() {
   const [user] = useAuthState(auth);
+  const router = useRouter();
   const [orders, setOrders] = useState<ParsedRow[]>([]);
   const [labels, setLabels] = useState<LabelResult[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) router.push('/login');
+  }, [user]);
+
+  if (!user) return <p className="text-center mt-10">Loading...</p>;
 
   const handleCSVUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -93,12 +101,9 @@ export default function UploadPage() {
   };
 
   const generateLabels = async () => {
-    if (!user) {
-      alert('You must be logged in to generate labels.');
-      return;
-    }
-
+    if (!user) return;
     setLoading(true);
+
     const batchId = uuidv4();
     const batchName = `Upload – ${new Date().toLocaleString()}`;
 
