@@ -1,11 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { useRouter } from 'next/navigation';
 import { auth } from '@/firebase';
-import { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { generateTCGCSV } from '@/lib/generateTCGCSV';
 
 type ParsedRow = {
   name: string;
@@ -15,32 +13,18 @@ type ParsedRow = {
   state: string;
   zip: string;
   weight: number;
-  orderNumber: string;
   nonMachinable: boolean;
-  shippingShield: boolean;
-  notes: string;
+  orderNumber: string;
   userId?: string;
   batchId?: string;
   batchName?: string;
 };
 
-type LabelResult = {
-  url: string;
-  tracking: string;
-};
-
 export default function UploadPage() {
   const [user] = useAuthState(auth);
-  const router = useRouter();
   const [orders, setOrders] = useState<ParsedRow[]>([]);
-  const [labels, setLabels] = useState<LabelResult[]>([]);
+  const [labels, setLabels] = useState<{ labelUrl: string; trackingCode: string }[]>([]);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!user) router.push('/login');
-  }, [user]);
-
-  if (!user) return <p className="text-center mt-10">Loading...</p>;
 
   const handleCSVUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -77,8 +61,6 @@ export default function UploadPage() {
         weight: parseFloat(values[weight]) || 1,
         orderNumber: values[orderNum],
         nonMachinable: false,
-        shippingShield: false,
-        notes: '',
       };
     });
 
@@ -86,27 +68,18 @@ export default function UploadPage() {
     setLabels([]);
   };
 
-  const updateOrder = <K extends keyof ParsedRow>(
-    index: number,
-    field: K,
-    value: ParsedRow[K]
-  ) => {
+  const handleToggle = (index: number) => {
     const updated = [...orders];
-    updated[index][field] = value;
+    updated[index].nonMachinable = !updated[index].nonMachinable;
     setOrders(updated);
   };
 
-  const toggleAll = (field: 'nonMachinable' | 'shippingShield', value: boolean) => {
-    setOrders((prev) => prev.map((o) => ({ ...o, [field]: value })));
-  };
-
   const generateLabels = async () => {
-    if (loading) {
-      alert('Please wait — label generation is already in progress.');
+    if (!user) {
+      alert('You must be logged in to generate labels.');
       return;
     }
 
-    if (!user) return;
     setLoading(true);
 
     const batchId = uuidv4();
@@ -150,71 +123,49 @@ export default function UploadPage() {
 
         {orders.length > 0 && (
           <>
-            <div className="flex gap-4 flex-wrap mb-2">
-              <button onClick={() => toggleAll('nonMachinable', true)} className="text-sm border px-3 py-1 rounded">📨 All Non-Mach</button>
-              <button onClick={() => toggleAll('nonMachinable', false)} className="text-sm border px-3 py-1 rounded">📨 None Non-Mach</button>
-              <button onClick={() => toggleAll('shippingShield', true)} className="text-sm border px-3 py-1 rounded">🛡 All Shield</button>
-              <button onClick={() => toggleAll('shippingShield', false)} className="text-sm border px-3 py-1 rounded">🛡 No Shield</button>
+            <h2 className="text-2xl font-semibold mb-4">Order Details</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full border border-black">
+                <thead className="bg-black text-white">
+                  <tr>
+                    <th className="border px-4 py-2">#</th>
+                    <th className="border px-4 py-2">Order #</th>
+                    <th className="border px-4 py-2">Name</th>
+                    <th className="border px-4 py-2">Address 1</th>
+                    <th className="border px-4 py-2">Address 2</th>
+                    <th className="border px-4 py-2">City</th>
+                    <th className="border px-4 py-2">State</th>
+                    <th className="border px-4 py-2">Zip</th>
+                    <th className="border px-4 py-2">Weight</th>
+                    <th className="border px-4 py-2">Non-Machinable</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((order, i) => (
+                    <tr key={i} className="even:bg-gray-100">
+                      <td className="border px-4 py-2">{i + 1}</td>
+                      <td className="border px-4 py-2">{order.orderNumber}</td>
+                      <td className="border px-4 py-2">{order.name}</td>
+                      <td className="border px-4 py-2">{order.address1}</td>
+                      <td className="border px-4 py-2">{order.address2}</td>
+                      <td className="border px-4 py-2">{order.city}</td>
+                      <td className="border px-4 py-2">{order.state}</td>
+                      <td className="border px-4 py-2">{order.zip}</td>
+                      <td className="border px-4 py-2">{order.weight}</td>
+                      <td className="border px-4 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={order.nonMachinable}
+                          onChange={() => handleToggle(i)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
-            <table className="w-full border mb-6 text-sm">
-              <thead className="bg-black text-white">
-                <tr>
-                  <th className="border px-2 py-1">#</th>
-                  <th className="border px-2 py-1">Order #</th>
-                  <th className="border px-2 py-1">Name</th>
-                  <th className="border px-2 py-1">Address 1</th>
-                  <th className="border px-2 py-1">Address 2</th>
-                  <th className="border px-2 py-1">City</th>
-                  <th className="border px-2 py-1">State</th>
-                  <th className="border px-2 py-1">Zip</th>
-                  <th className="border px-2 py-1">Weight</th>
-                  <th className="border px-2 py-1">📨</th>
-                  <th className="border px-2 py-1">🛡</th>
-                  <th className="border px-2 py-1">📝 Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o, i) => (
-                  <tr key={i} className="even:bg-gray-100">
-                    <td className="border px-2 py-1">{i + 1}</td>
-                    <td className="border px-2 py-1">{o.orderNumber}</td>
-                    <td className="border px-2 py-1">{o.name}</td>
-                    <td className="border px-2 py-1">{o.address1}</td>
-                    <td className="border px-2 py-1">{o.address2}</td>
-                    <td className="border px-2 py-1">{o.city}</td>
-                    <td className="border px-2 py-1">{o.state}</td>
-                    <td className="border px-2 py-1">{o.zip}</td>
-                    <td className="border px-2 py-1">{o.weight}</td>
-                    <td className="border px-2 py-1 text-center">
-                      <input
-                        type="checkbox"
-                        checked={o.nonMachinable}
-                        onChange={() => updateOrder(i, 'nonMachinable', !o.nonMachinable)}
-                      />
-                    </td>
-                    <td className="border px-2 py-1 text-center">
-                      <input
-                        type="checkbox"
-                        checked={o.shippingShield}
-                        onChange={() => updateOrder(i, 'shippingShield', !o.shippingShield)}
-                      />
-                    </td>
-                    <td className="border px-2 py-1">
-                      <input
-                        type="text"
-                        value={o.notes}
-                        placeholder="optional"
-                        onChange={(e) => updateOrder(i, 'notes', e.target.value)}
-                        className="w-full p-1 border rounded"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <div className="text-center mt-4 mb-10">
+            <div className="text-center mt-8">
               <button
                 onClick={generateLabels}
                 className="bg-green-700 text-white px-6 py-2 rounded hover:bg-green-800"
@@ -222,29 +173,54 @@ export default function UploadPage() {
               >
                 {loading ? 'Generating...' : 'Generate Labels'}
               </button>
-              {loading && <p className="text-sm text-gray-600 mt-2">Generating labels... please wait.</p>}
             </div>
           </>
         )}
 
         {labels.length > 0 && (
-          <div className="mt-6">
+          <div className="mt-10">
             <h2 className="text-xl font-semibold mb-2">Generated Labels</h2>
-            <ul className="space-y-2">
-              {labels.map((label, i) => (
-                <li key={i}>
-                  <a
-                    href={label.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline"
-                  >
-                    Open Label {i + 1}
-                  </a>
-                  <p className="text-sm text-gray-600">Tracking: {label.tracking}</p>
-                </li>
-              ))}
-            </ul>
+
+            <div className="flex justify-start mb-6">
+              <button
+                className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800"
+                onClick={async () => {
+                  const res = await fetch('/api/labels/merge', {
+                    method: 'POST',
+                    body: JSON.stringify(labels.map((l) => l.labelUrl || l.url)),
+                    headers: { 'Content-Type': 'application/json' },
+                  });
+
+                  if (!res.ok) {
+                    alert('Failed to download merged PDF');
+                    return;
+                  }
+
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = 'labels.pdf';
+                  link.click();
+                }}
+              >
+                Download All Labels (PDF)
+              </button>
+            </div>
+
+            {labels.map((label, i) => (
+              <div key={i} className="mb-4">
+                <a
+                  href={label.labelUrl || label.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline"
+                >
+                  Open Label {i + 1}
+                </a>
+                <p className="text-sm">Tracking: {label.trackingCode || label.tracking}</p>
+              </div>
+            ))}
           </div>
         )}
       </div>

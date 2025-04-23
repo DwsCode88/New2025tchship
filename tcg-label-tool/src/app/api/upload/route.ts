@@ -8,17 +8,8 @@ const AUTH_HEADER = `Basic ${Buffer.from(EASYPOST_API_KEY + ':').toString('base6
 
 export async function POST(req: NextRequest) {
   const orders = await req.json();
-  const results: { url: string; tracking: string }[] = [];
-
-  const first = orders[0];
-
-  if (first?.batchId) {
-    await setDoc(doc(db, 'batches', first.batchId), {
-      batchName: first.batchName || 'Unnamed Batch',
-      createdAt: Date.now(),
-      archived: false,
-    }, { merge: true });
-  }
+  const results: { labelUrl: string; trackingCode: string }[] = [];
+  const createdBatchIds = new Set<string>();
 
   for (const order of orders) {
     try {
@@ -40,11 +31,11 @@ export async function POST(req: NextRequest) {
               country: 'US',
             },
             from_address: {
-              name: 'SpringedCards/VaultTrove',
-              street1: '411 1st st',
-              city: 'Inwood',
-              state: 'WV',
-              zip: '25428',
+              name: 'VaultTrove',
+              street1: '123 Main St',
+              city: 'Sterling',
+              state: 'VA',
+              zip: '20164',
               country: 'US',
             },
             parcel: {
@@ -85,34 +76,34 @@ export async function POST(req: NextRequest) {
 
       if (!bought?.postage_label?.label_url) {
         console.error(`❌ Label failed for ${order.name}`);
+        console.log('Buy Response:', bought);
         continue;
       }
 
       const orderId = uuidv4();
-      const labelCost = parseFloat(rate?.rate || '0.63');
-      const envelopeCost = 0.10;
-      const shieldCost = order.shippingShield ? 0.10 : 0;
-      const totalCost = parseFloat((labelCost + envelopeCost + shieldCost).toFixed(2));
-
       await setDoc(doc(db, 'orders', orderId), {
         userId: order.userId || 'unknown',
         batchId: order.batchId,
         batchName: order.batchName,
-        orderNumber: order.orderNumber,
+        orderNumber: order.orderNumber || '',
         trackingCode: bought.tracking_code,
         labelUrl: bought.postage_label.label_url,
         toName: order.name,
-        labelCost,
-        envelopeCost,
-        shieldCost,
-        totalCost,
-        shippingShield: !!order.shippingShield,
         createdAt: Date.now(),
       });
 
+      if (!createdBatchIds.has(order.batchId)) {
+        await setDoc(doc(db, 'batches', order.batchId), {
+          userId: order.userId || 'unknown',
+          batchName: order.batchName,
+          createdAt: Date.now(),
+        });
+        createdBatchIds.add(order.batchId);
+      }
+
       results.push({
-        url: bought.postage_label.label_url,
-        tracking: bought.tracking_code,
+        labelUrl: bought.postage_label.label_url,
+        trackingCode: bought.tracking_code,
       });
     } catch (err) {
       console.error(`🔥 Error generating label for ${order.name}:`, err);

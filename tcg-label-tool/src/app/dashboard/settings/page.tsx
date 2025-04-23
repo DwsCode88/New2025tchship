@@ -13,9 +13,8 @@ export default function SettingsPage() {
   const [logoUrl, setLogoUrl] = useState('');
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
-    } else {
+    if (!user) router.push('/login');
+    else {
       fetchUserSettings(user.uid).then((settings) => {
         if (settings) {
           setKey(settings.easypostApiKey);
@@ -25,7 +24,7 @@ export default function SettingsPage() {
     }
   }, [user]);
 
-  if (!user) return <p className="text-center mt-10">Loading...</p>;
+  if (!user) return <p className="text-center mt-10 text-white">Loading...</p>;
 
   const handleSave = async () => {
     if (user) {
@@ -35,21 +34,35 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto p-6 space-y-4">
-      <h2 className="text-lg font-bold">⚙️ Your Settings</h2>
-      <input
-        className="w-full p-2 border"
-        value={easypostApiKey}
-        onChange={(e) => setKey(e.target.value)}
-        placeholder="EasyPost API Key"
-      />
-      <input
-        className="w-full p-2 border"
-        value={logoUrl}
-        onChange={(e) => setLogoUrl(e.target.value)}
-        placeholder="Logo URL"
-      />
-      <button className="bg-blue-600 text-white p-2 rounded" onClick={handleSave}>
+    <div className="max-w-xl mx-auto space-y-6">
+      <h1 className="text-2xl font-bold text-white mb-4">⚙️ User Settings</h1>
+
+      <div>
+        <label className="block text-sm text-zinc-400 mb-1">EasyPost API Key</label>
+        <input
+          type="text"
+          value={easypostApiKey}
+          onChange={(e) => setKey(e.target.value)}
+          className="w-full p-2 rounded border border-zinc-700 bg-zinc-800 text-white"
+          placeholder="sk_xxx..."
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm text-zinc-400 mb-1">Logo URL (optional)</label>
+        <input
+          type="text"
+          value={logoUrl}
+          onChange={(e) => setLogoUrl(e.target.value)}
+          className="w-full p-2 rounded border border-zinc-700 bg-zinc-800 text-white"
+          placeholder="https://example.com/logo.png"
+        />
+      </div>
+
+      <button
+        onClick={handleSave}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
+      >
         Save Settings
       </button>
     </div>
