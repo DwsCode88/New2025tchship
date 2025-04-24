@@ -1,96 +1,54 @@
 'use client';
 
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/firebase';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
 import Link from 'next/link';
-
-type Batch = {
-  id: string;
-  batchName: string;
-  createdAt: number;
-  archived?: boolean;
-};
+import { db } from '@/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '@/firebase';
 
 export default function HistoryPage() {
   const [user] = useAuthState(auth);
-  const router = useRouter();
-  const [batches, setBatches] = useState<Batch[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!user) router.push('/login');
-  }, [user]);
-
-  useEffect(() => {
-    const fetchBatches = async () => {
+    const fetchData = async () => {
       if (!user) return;
-
-      const snap = await getDocs(
-        query(collection(db, 'batches'), where('userId', '==', user.uid))
-      );
-
-      const data = snap.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Batch, 'id'>),
-      }));
-
+      const q = query(collection(db, 'batches'), where('userId', '==', user.uid));
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       const sorted = data.sort((a, b) => b.createdAt - a.createdAt);
       setBatches(sorted);
     };
-
-    fetchBatches();
+    fetchData();
   }, [user]);
 
-  if (!user) return <p className="text-center mt-10 text-white">Loading...</p>;
-
   return (
-    <div className="max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-white mb-6">📁 Batch History</h1>
+    <div className="max-w-4xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-4">📁 Batch History</h1>
 
       {batches.length === 0 ? (
-        <p className="text-zinc-400">No batches found.</p>
+        <p className="text-sm text-gray-600">No batches found.</p>
       ) : (
-        <table className="w-full text-sm border border-zinc-700 text-white">
-          <thead className="bg-zinc-800 text-zinc-300">
-            <tr>
-              <th className="border border-zinc-700 px-3 py-2 text-left">Batch</th>
-              <th className="border border-zinc-700 px-3 py-2 text-left">Created</th>
-              <th className="border border-zinc-700 px-3 py-2 text-left">Status</th>
-              <th className="border border-zinc-700 px-3 py-2 text-left">View</th>
-            </tr>
-          </thead>
-          <tbody>
-            {batches.map((batch) => (
-              <tr key={batch.id} className="even:bg-zinc-900">
-                <td className="border border-zinc-700 px-3 py-2">{batch.batchName}</td>
-                <td className="border border-zinc-700 px-3 py-2">
-                  {new Date(batch.createdAt).toLocaleString()}
-                </td>
-                <td className="border border-zinc-700 px-3 py-2">
-                  {batch.archived ? (
-                    <span className="bg-yellow-800 text-yellow-300 text-xs px-2 py-1 rounded">
-                      Archived
-                    </span>
-                  ) : (
-                    <span className="bg-green-800 text-green-300 text-xs px-2 py-1 rounded">
-                      Active
-                    </span>
-                  )}
-                </td>
-                <td className="border border-zinc-700 px-3 py-2">
-                  <Link
-                    href={`/dashboard/batch/${batch.id}`}
-                    className="text-blue-400 hover:underline"
-                  >
-                    View
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ul className="space-y-4">
+          {batches.map((batch) => (
+            <li key={batch.id} className="border p-4 rounded shadow-sm">
+              <h2 className="font-semibold text-lg">{batch.batchName}</h2>
+              <p className="text-sm text-gray-600 mb-1">
+                Created: {new Date(batch.createdAt).toLocaleString()}
+              </p>
+              {batch.notes && (
+                <p className="text-sm text-gray-800 italic mb-2">{batch.notes}</p>
+              )}
+              <Link
+                href={`/dashboard/batch/${batch.id}`}
+                className="inline-block bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700 text-sm"
+              >
+                View Batch
+              </Link>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
